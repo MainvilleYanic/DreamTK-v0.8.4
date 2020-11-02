@@ -1805,6 +1805,173 @@ Class.Analysis.GT <- R6Class("Class.Analysis.GT",
         }
       )
       progress$inc(1/2, detail = "Generating GeneTox Plots");
+		},
+		
+		plotGeneToxCurvePlot = function(input, output, progress) {
+		  loginfo("Creating GeneTox plots");
+		  chemicals <- private$chem_data['chemical'] %>% unique() %>% unlist() %>% unname() %>% as.character();
+		  endpoints <- private$chem_data['endpoint_grp'] %>% unique() %>% unlist() %>% unname() %>% as.character();
+		  
+		  if (length(input$select_chemical_gt) > length(chemicals))
+		  {
+		    logwarn(paste("Missing chemical info for: ", paste(input$select_chemical_gt[which(!input$select_chemical_gt %in% chemicals)], collapse = ", "), sep = ""));
+		    showNotification("Some chemicals might be missing because no data was associated with them.", type = "warning", duration = 5);
+		  }
+		  
+		  chemDataTable <- list();
+		  
+		  if (!is.null(private$assay_desc))
+		  {
+		    insertUI(
+		      selector = "#ui_gt_plotContainerCenter",
+		      where = "beforeEnd",
+		      ui = box(status = "primary", title = "Assay Description", collapsible = TRUE, width = 12,
+		               column(width = 8, offset = 2,
+		                      wellPanel(
+		                        h4("Assay Description"),
+		                        DT::dataTableOutput(outputId = "table_GTAssayDescription6")
+		                      )
+		               )
+		      )
+		    )
+		    output$table_GTAssayDescription6 <- DT::renderDataTable(server = FALSE, {
+		      datatable(private$assay_desc,
+		                selection="none", filter="bottom", extensions = "Buttons",
+		                options=list(buttons = c('copy', 'csv', 'excel'), dom = "Blfrtip",
+		                             pageLength = 10, searchHighlight = TRUE, lengthMenu = c(10, 20, 50, 100),
+		                             scrollX=TRUE, scrollCollapse=TRUE), rownames = FALSE) %>%
+		        formatStyle(seq(7), "border-right" = "solid 1px", "border-right-color" =  "rgba(221, 221, 221, 0.2)");
+		      
+		    })
+		  }
+		  
+		  insertUI(
+		    selector = "#ui_gt_plotContainerCenter",
+		    where = "beforeEnd",
+		    ui = fluidRow(id = "ui_gt_plots",
+		                  column(12,
+		                         box(status = "primary", title = NULL, collapsible = FALSE, solidHeader = FALSE, width = 12,
+		                             dropdownButton(
+		                               tags$h3("About the plot"),
+		                               tags$h5("This is a plot showing something."),
+		                               circle = TRUE, status = "danger", icon = icon("question-circle"), width = "300px",
+		                               tooltip = NULL)
+		                         )
+		                  )
+		    )
+		  );
+		  
+		  i <- 1;
+		  if (input$gt_comparaison == 1)
+		  {
+		    for (c in chemicals)
+		    {
+		      for (endpt in endpoints)
+		      {
+		        if ((i-1) %% 2 == 0)
+		        {
+		          insertUI(
+		            selector = "#ui_gt_plotContainerLeft",
+		            where = "beforeEnd",
+		            ui = fluidRow(id = "ui_gt_plots",
+		                          column(12,
+		                                 box(status = "primary", title = paste(c, " - ", endpt, sep=""), collapsible = TRUE, width = 12,
+		                                     imageOutput(outputId = paste(c, " - ", endpt, sep=""), height=310)
+		                                 )
+		                          )
+		            )
+		          );
+		        }
+		        else
+		        {
+		          insertUI(
+		            selector = "#ui_gt_plotContainerRight",
+		            where = "beforeEnd",
+		            ui = fluidRow(id = "ui_gt_plots",
+		                          column(12,
+		                                 box(status = "primary", title = paste(c, " - ", endpt, sep=""), collapsible = TRUE, width = 12,
+		                                     imageOutput(outputId = paste(c, " - ", endpt, sep=""), height=310)
+		                                 )
+		                          )
+		            )
+		          );
+		        }
+		        i <- i + 1;
+		        local({
+		          myVal <- paste(c, " - ", endpt, sep="");
+		          output[[myVal]] <- renderImage(
+		            {
+		              return(
+		                list(
+		                  src = "data\\GeneTox_curve_fit_plots\\Sample_Curve_Fit_Plots.png",
+		                  filetype = "image/png",
+		                  alt = "curve plot",
+		                  height = 300
+		                )
+		              )
+		            }
+		          )
+		        })
+		        progress$inc(1/(2*length(chemicals)*length(endpoints)), detail = "Generating GeneTox Plots");
+		      }
+		    }
+		  
+		  }
+		  else
+		  {
+		    for (endpt in endpoints)
+		    {
+		      for (c in chemicals)
+		      {
+		        if ((i-1) %% 2 == 0)
+		        {
+		          insertUI(
+		            selector = "#ui_gt_plotContainerLeft",
+		            where = "beforeEnd",
+		            ui = fluidRow(id = "ui_gt_plots",
+		                          column(12,
+		                                 box(status = "primary", title = paste(c, " - ", endpt, sep=""), collapsible = TRUE, width = 12,
+		                                     imageOutput(outputId = paste(c, " - ", endpt, sep=""), height=310)
+		                                 )
+		                          )
+		            )
+		          );
+		        }
+		        else
+		        {
+		          insertUI(
+		            selector = "#ui_gt_plotContainerRight",
+		            where = "beforeEnd",
+		            ui = fluidRow(id = "ui_gt_plots",
+		                          column(12,
+		                                 box(status = "primary", title = paste(c, " - ", endpt, sep=""), collapsible = TRUE, width = 12,
+		                                     imageOutput(outputId = paste(c, " - ", endpt, sep=""), height=310)
+		                                 )
+		                          )
+		            )
+		          );
+		        }
+		        i <- i + 1;
+		        local({
+		          myVal <- paste(c, " - ", endpt, sep="");
+		          output[[myVal]] <- renderImage(
+		            {
+		              return(
+		                list(
+		                  src = "data\\GeneTox_curve_fit_plots\\Sample_Curve_Fit_Plots.png",
+		                  filetype = "image/png",
+		                  alt = "curve plot",
+		                  height = 300
+		                )
+		              )
+		            }
+		          )
+		        })
+		        progress$inc(1/(2*length(chemicals)*length(endpoints)), detail = "Generating GeneTox Plots");
+		      }
+		    }
+		    
+		  }
 		}
 	)
 )

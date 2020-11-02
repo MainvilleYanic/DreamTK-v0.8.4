@@ -1,11 +1,11 @@
 # SERVER SUPPORT FUNCTIONS
 
-#v0.8.3
+#v0.8.4
 
 # Version number and revision
 app.version.major <- "0";
 app.version.minor <- "8";
-app.version.revision <- "3";
+app.version.revision <- "4";
 
 #num columns 
 num_plot_cols <- 1;

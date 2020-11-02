@@ -382,7 +382,6 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
         target_family_count_tbl <- filter(basic_table, casn == chemical_casn, above_cutoff == "Y") %>% 
           select(casn, name, intended_target_family) %>%
           drop_na(intended_target_family);
-        #YANIC
         target_family_counts <- plyr::count(target_family_count_tbl, vars = "intended_target_family"); #colnames: intended_target_family, n
         target_family_ac_tbl <- tribble(~intended_target_family, ~avg_ac50);
 

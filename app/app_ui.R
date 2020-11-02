@@ -450,7 +450,9 @@ body <- dashboardBody(
                           #"BMD vs BMR Graph" = 2, #This graph was not deemed useful. YANIC
                           "BMR Distribution Graph" = 3, 
                           "Hierarchically Clustered BMD Heatmap Graph" = 4, 
-                          "BMD Grouped Confidence Interval Graph" = 5), selected = 1),
+                          "BMD Grouped Confidence Interval Graph" = 5,
+                          "Curve Fit Plots" = 6
+                        ), selected = 1),
                       fluidRow(
                         column(6,
                           conditionalPanel("input.select_graphType_gt == 1 || input.select_graphType_gt == 2 || input.select_graphType_gt == 3",
@@ -509,7 +511,7 @@ body <- dashboardBody(
                               ),
                             )
                           ),
-                          conditionalPanel("input.select_graphType_gt == 2 || input.select_graphType_gt == 3",
+                          conditionalPanel("input.select_graphType_gt == 2 || input.select_graphType_gt == 3 || input.select_graphType_gt == 6",
                             fillRow(height = 171)
                           ),
                           conditionalPanel("input.select_graphType_gt == 2 || input.select_graphType_gt == 3 || input.select_graphType_gt == 4",
@@ -522,14 +524,19 @@ body <- dashboardBody(
                           )
                         ),
                         column(6,
-                          strong("Activate Logarithmic Values"),
-                          prettySwitch(inputId = "log_switch_gt", label = "", value = FALSE, status = "primary",
-                                       fill = TRUE, bigger = TRUE, inline = FALSE,
-                                       width = NULL),
-                          strong("Show Plotting Data"),
-                          prettySwitch(inputId = "plottingData_switch_gt", label = "", value = FALSE, status = "primary",
-                                       fill = TRUE, bigger = TRUE, inline = FALSE,
-                                       width = NULL),
+                          conditionalPanel("input.select_graphType_gt != 6",
+                            strong("Activate Logarithmic Values"),
+                            prettySwitch(inputId = "log_switch_gt", label = "", value = FALSE, status = "primary",
+                                         fill = TRUE, bigger = TRUE, inline = FALSE,
+                                         width = NULL),
+                            strong("Show Plotting Data"),
+                            prettySwitch(inputId = "plottingData_switch_gt", label = "", value = FALSE, status = "primary",
+                                         fill = TRUE, bigger = TRUE, inline = FALSE,
+                                         width = NULL),
+                          ),
+                          conditionalPanel("input.select_graphType_gt == 6",
+                            fillRow(height = 110)
+                          ),
                           strong("Show Assay-Endpoint Description"),
                           prettySwitch(inputId = "description_switch_gt", label = "", value = FALSE, status = "primary",
                                        fill = TRUE, bigger = TRUE, inline = FALSE,
@@ -541,7 +548,8 @@ body <- dashboardBody(
                   ),
                   column(6,
                     wellPanel(id = "gt_comparaison_type",
-                      selectizeInput(inputId = "gt_modelComp", label = "Select Comparison Model",
+                      conditionalPanel("input.select_graphType_gt == 1 || input.select_graphType_gt == 2 || input.select_graphType_gt == 3 || input.select_graphType_gt == 4 || input.select_graphType_gt == 5",
+                        selectizeInput(inputId = "gt_modelComp", label = "Select Comparison Model",
                                      multiple = FALSE, choices = c(
                                        "Best model (by Loglikelihood)" = 1, 
                                        "Best model (by AIC)" = 2, 
@@ -549,8 +557,12 @@ body <- dashboardBody(
                                        "Exponential Curve Model" = 4, 
                                        "Hill Curve Model" = 5, 
                                        "Geometric Mean of Hill Curve and Exponential" = 6
-                                       ), selected = 1),
-                      conditionalPanel("input.select_graphType_gt == 1 || input.select_graphType_gt == 2 || input.select_graphType_gt == 3",
+                                      ), selected = 1),
+                      ),
+                      conditionalPanel("input.select_graphType_gt == 6",
+                        fillRow(height = 79)
+                      ),
+                      conditionalPanel("input.select_graphType_gt == 1 || input.select_graphType_gt == 2 || input.select_graphType_gt == 3 || input.select_graphType_gt == 6",
                         selectizeInput(inputId = "gt_comparaison", label = "Select Comparison type",
                           multiple = FALSE, choices = c("By chemicals" = 1, "By endpoints" = 2), selected = 1)
                       ),
