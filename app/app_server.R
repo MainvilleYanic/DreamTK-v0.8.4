@@ -1433,6 +1433,10 @@ server <- function( input, output, session ){
      {
        gtAnalysis$plotGeneToxCurvePlot(input, output, progress = progressB)
      }
+     else if (input$select_graphType_gt == 7)
+     {
+       gtAnalysis$plotGeneToxPi(input, output, bmrValue = ifelse((input$gt_modelComp %in% c(2,3) || input$gt_bmr_picker == 1), input$gt_precalculated_choices, as.numeric(input$gt_custom_choice)), progress = progressB, logVal = input$log_switch_gt, showPlotData = input$plottingData_switch_gt, forceScale = input$forceScale_switch_gt, forceOrder = input$forceOrder_switch_gt);
+     }
      
    }
   );

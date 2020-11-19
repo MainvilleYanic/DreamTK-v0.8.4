@@ -1807,6 +1807,7 @@ Class.Analysis.GT <- R6Class("Class.Analysis.GT",
       progress$inc(1/2, detail = "Generating GeneTox Plots");
 		},
 		
+		#Show images of the Curve plot
 		plotGeneToxCurvePlot = function(input, output, progress) {
 		  loginfo("Creating GeneTox plots");
 		  chemicals <- private$chem_data['chemical'] %>% unique() %>% unlist() %>% unname() %>% as.character();
@@ -1971,6 +1972,369 @@ Class.Analysis.GT <- R6Class("Class.Analysis.GT",
 		      }
 		    }
 		    
+		  }
+		},
+		
+		#create and show the plots the GeneToxPi Graphs
+		plotGeneToxPi = function(input, output, bmrValue = 5, progress, logVal = FALSE, showPlotData = FALSE, forceScale = FALSE, forceOrder = FALSE) {
+		  loginfo("Creating GeneTox plots");
+		  private$chem_data <- private$chem_data %>% filter(.$bmr == bmrValue);
+		  chemicals <- private$chem_data['chemical'] %>% unique() %>% unlist() %>% unname() %>% as.character();
+		  endpoints <- private$chem_data['endpoint_grp'] %>% unique() %>% unlist() %>% unname() %>% as.character();
+		  
+		  if (length(input$select_chemical_gt) > length(chemicals))
+		  {
+		    logwarn(paste("Missing chemical info for: ", paste(input$select_chemical_gt[which(!input$select_chemical_gt %in% chemicals)], collapse = ", "), sep = ""));
+		    showNotification("Some chemicals might be missing because no data was associated with them.", type = "warning", duration = 5);
+		  }
+		  
+		  chemDataTable <- list();
+		  
+		  xmin <- min(min(private$chem_data[!is.na(private$chem_data["bmdl"]) & private$chem_data["bmdl"] != -Inf,'bmdl'], na.rm = TRUE), min(private$chem_data[!is.na(private$chem_data["bmd"]) & private$chem_data["bmd"] != -Inf,'bmd'], na.rm = TRUE), min(private$chem_data[!is.na(private$chem_data["bmdu"]) & private$chem_data["bmdu"] != -Inf,'bmdu'], na.rm = TRUE), na.rm = TRUE)
+		  xmax <- max(max(private$chem_data[!is.na(private$chem_data["bmdl"]) & private$chem_data["bmdl"] != Inf,'bmdl'], na.rm = TRUE), max(private$chem_data[!is.na(private$chem_data["bmd"]) & private$chem_data["bmd"] != Inf,'bmd'], na.rm = TRUE), max(private$chem_data[!is.na(private$chem_data["bmdu"]) & private$chem_data["bmdu"] != Inf,'bmdu'], na.rm = TRUE), na.rm = TRUE)
+		  
+		  if (showPlotData)
+		  {
+		    insertUI(
+		      selector = "#ui_gt_plotContainerCenter",
+		      where = "afterBegin",
+		      ui = box(status = "primary", title = "Plotting Data Table", collapsible = TRUE, width = 12,
+		               column(width = 8, offset = 2,
+		                      wellPanel(
+		                        h4("Plotting Data Table"),
+		                        DT::dataTableOutput(outputId = "table_GTPlottingData7")
+		                      )
+		               )
+		      )
+		    )
+		    output$table_GTPlottingData7 <- DT::renderDataTable(server = FALSE, {
+		      datatable(eval(parse(text=paste("private$chem_data %>% select(chemical, endpoint_grp, bmr, bmdl, bmd, bmdu, trend, model_type) %>% ",
+		                                      "dplyr::rename(\"Chemical\" = chemical, \"Endpoint Group\" = endpoint_grp, \"BMR\" = bmr, ", ifelse(logVal, "\"log(BMDL)\"", "\"BMDL\""),
+		                                      " = bmdl, ", ifelse(logVal, "\"log(BMD)\"", "\"BMD\""), " = bmd, ", ifelse(logVal, "\"log(BMDU)\"", "\"BMDU\""), " = bmdu, \"Trend\" = trend, ",
+		                                      "\"Model Type\" = model_type)", sep=""))),
+		                selection="none", filter="bottom", extensions = "Buttons",
+		                options=list(buttons = c('copy', 'csv', 'excel'), dom = "Blfrtip",
+		                             pageLength = 10, searchHighlight = TRUE, lengthMenu = c(10, 20, 50, 100),
+		                             scrollX=TRUE, scrollCollapse=TRUE), rownames = FALSE) %>%
+		        formatStyle(seq(7), "border-right" = "solid 1px", "border-right-color" =  "rgba(221, 221, 221, 0.2)");
+		      
+		    })
+		  }
+		  
+		  if (!is.null(private$assay_desc))
+		  {
+		    insertUI(
+		      selector = "#ui_gt_plotContainerCenter",
+		      where = "beforeEnd",
+		      ui = box(status = "primary", title = "Assay Description", collapsible = TRUE, width = 12,
+		               column(width = 8, offset = 2,
+		                      wellPanel(
+		                        h4("Assay Description"),
+		                        DT::dataTableOutput(outputId = "table_GTAssayDescription1")
+		                      )
+		               )
+		      )
+		    )
+		    output$table_GTAssayDescription1 <- DT::renderDataTable(server = FALSE, {
+		      datatable(private$assay_desc,
+		                selection="none", filter="bottom", extensions = "Buttons",
+		                options=list(buttons = c('copy', 'csv', 'excel'), dom = "Blfrtip",
+		                             pageLength = 10, searchHighlight = TRUE, lengthMenu = c(10, 20, 50, 100),
+		                             scrollX=TRUE, scrollCollapse=TRUE), rownames = FALSE) %>%
+		        formatStyle(seq(7), "border-right" = "solid 1px", "border-right-color" =  "rgba(221, 221, 221, 0.2)");
+		      
+		    })
+		  }
+		  
+		  insertUI(
+		    selector = "#ui_gt_plotContainerCenter",
+		    where = "beforeEnd",
+		    ui = fluidRow(id = "ui_gt_plots",
+		                  column(12,
+		                         box(status = "primary", title = NULL, collapsible = FALSE, solidHeader = FALSE, width = 12,
+		                             dropdownButton(
+		                               tags$h3("About the plot"),
+		                               tags$h5("This is a plot showing the confidence interval for each chemicals and endpoints."),
+		                               tags$h5("Red lines represent a dataset without trend, according to TCPL's MC4 test."),
+		                               tags$h5("Blue stars represent a value that is tending towards positive or negative infinity."),
+		                               circle = TRUE, status = "danger", icon = icon("question-circle"), width = "300px",
+		                               tooltip = NULL)
+		                         )
+		                  )
+		    )
+		  );
+		  
+		  i <- 1;
+		  if (input$gt_comparaison == 1)
+		  {
+		    for (c in chemicals)
+		    {
+		      chemDataTable[[c]] <- private$chem_data %>% filter(chemical == c);
+		      for (endpt in endpoints)
+		      {
+		        if (nrow(chemDataTable[[c]] %>% filter(endpoint_grp == endpt)) ==0)
+		        {
+		          chemDataTable[[c]] = rbind(chemDataTable[[c]], as.data.frame(list(chemical=c, endpoint_grp = endpt, bmr = NA_real_, bmdl = NA_real_, bmd = NA_real_, bmdu = NA_real_, trend = FALSE, model_type=NA)));
+		        }
+		      }
+		      if ((i-1) %% 2 == 0)
+		      {
+		        insertUI(
+		          selector = "#ui_gt_plotContainerLeft",
+		          where = "beforeEnd",
+		          ui = fluidRow(id = "ui_gt_plots",
+		                        column(12,
+		                               box(status = "primary", title = "", collapsible = TRUE, width = 12,
+		                                   plotlyOutput(outputId = c, height=length(endpoints)*51+95)
+		                               )
+		                        )
+		          )
+		        );
+		      }
+		      else
+		      {
+		        insertUI(
+		          selector = "#ui_gt_plotContainerRight",
+		          where = "beforeEnd",
+		          ui = fluidRow(id = "ui_gt_plots",
+		                        column(12,
+		                               box(status = "primary", title = "", collapsible = TRUE, width = 12,
+		                                   plotlyOutput(outputId = c, height=300)
+		                               )
+		                        )
+		          )
+		        );
+		      }
+		      local({
+		        myChem <- c;
+		        output[[myChem]] <- renderPlotly(
+		          {
+		            if (logVal)
+		            {
+		              NInfVal <- min(ifelse(nrow(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdl"]) & (chemDataTable[[myChem]])["bmdl"] != -Inf, ])['bmdl']) == 0, Inf, min(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdl"]) & (chemDataTable[[myChem]])["bmdl"] != -Inf, ])['bmdl'], na.rm = TRUE)), 
+		                             ifelse(nrow(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmd"]) & (chemDataTable[[myChem]])["bmd"] != -Inf, ])['bmd']) == 0, Inf, min(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmd"]) & (chemDataTable[[myChem]])["bmd"] != -Inf, ])['bmd'], na.rm = TRUE)), 
+		                             ifelse(nrow(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdu"]) & (chemDataTable[[myChem]])["bmdu"] != -Inf, ])['bmdu']) == 0, Inf, min(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdu"]) & (chemDataTable[[myChem]])["bmdu"] != -Inf, ])['bmdu'], na.rm = TRUE)),
+		                             ifelse(forceScale, xmin, Inf), na.rm = TRUE)-1;
+		              InfVal <- max(ifelse(nrow(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdl"]) & (chemDataTable[[myChem]])["bmdl"] != Inf, ])['bmdl']) == 0, -Inf, max(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdl"]) & (chemDataTable[[myChem]])["bmdl"] != Inf, ])['bmdl'], na.rm = TRUE)), 
+		                            ifelse(nrow(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmd"]) & (chemDataTable[[myChem]])["bmd"] != Inf, ])['bmd']) == 0, -Inf, max(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmd"]) & (chemDataTable[[myChem]])["bmd"] != Inf, ])['bmd'], na.rm = TRUE)), 
+		                            ifelse(nrow(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdu"]) & (chemDataTable[[myChem]])["bmdu"] != Inf, ])['bmdu']) == 0, -Inf, max(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdu"]) & (chemDataTable[[myChem]])["bmdu"] != Inf, ])['bmdu'], na.rm = TRUE)),
+		                            ifelse(forceScale, xmax, -Inf), na.rm = TRUE)+1;
+		            }
+		            else
+		            {
+		              NInfVal <- -1;
+		              InfVal <- max(ifelse(nrow(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdl"]) & (chemDataTable[[myChem]])["bmdl"] != Inf, ])['bmdl']) == 0, -Inf, max(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdl"]) & (chemDataTable[[myChem]])["bmdl"] != Inf, ])['bmdl'], na.rm = TRUE)), 
+		                            ifelse(nrow(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmd"]) & (chemDataTable[[myChem]])["bmd"] != Inf, ])['bmd']) == 0, -Inf, max(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmd"]) & (chemDataTable[[myChem]])["bmd"] != Inf, ])['bmd'], na.rm = TRUE)), 
+		                            ifelse(nrow(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdu"]) & (chemDataTable[[myChem]])["bmdu"] != Inf, ])['bmdu']) == 0, -Inf, max(((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdu"]) & (chemDataTable[[myChem]])["bmdu"] != Inf, ])['bmdu'], na.rm = TRUE)), 
+		                            ifelse(forceScale, xmax, -Inf), na.rm = TRUE)*1.1;
+		            }
+		            
+		            if (nrow((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdl"]) & (chemDataTable[[myChem]])["bmdl"] == Inf,]) > 0)
+		            {chemDataTable[[myChem]][!is.na(chemDataTable[[myChem]]["bmdl"]) & chemDataTable[[myChem]]["bmdl"] == Inf,"bmdl"] <- InfVal;}
+		            if (nrow((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmd"]) & (chemDataTable[[myChem]])["bmd"] == Inf,]) > 0)
+		            {chemDataTable[[myChem]][!is.na(chemDataTable[[myChem]]["bmd"]) & chemDataTable[[myChem]]["bmd"] == Inf,"bmd"] <- InfVal;}
+		            if (nrow((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdu"]) & (chemDataTable[[myChem]])["bmdu"] == Inf,]) > 0)
+		            {chemDataTable[[myChem]][!is.na(chemDataTable[[myChem]]["bmdu"]) & chemDataTable[[myChem]]["bmdu"] == Inf,"bmdu"] <- InfVal;}
+		            if (nrow((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdl"]) & (chemDataTable[[myChem]])["bmdl"] == -Inf,]) > 0)
+		            {chemDataTable[[myChem]][!is.na(chemDataTable[[myChem]]["bmdl"]) & chemDataTable[[myChem]]["bmdl"] == -Inf,"bmdl"] <- NInfVal;}
+		            if (nrow((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmd"]) & (chemDataTable[[myChem]])["bmd"] == -Inf,]) > 0)
+		            {chemDataTable[[myChem]][!is.na(chemDataTable[[myChem]]["bmd"]) & chemDataTable[[myChem]]["bmd"] == -Inf,"bmd"] <- NInfVal;}
+		            if (nrow((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdu"]) & (chemDataTable[[myChem]])["bmdu"] == -Inf,]) > 0)
+		            {chemDataTable[[myChem]][!is.na(chemDataTable[[myChem]]["bmdu"]) & chemDataTable[[myChem]]["bmdu"] == -Inf,"bmdu"] <- NInfVal;}
+		            
+		            #if (forceOrder)
+		            #{
+		            #  p <- ggplot(chemDataTable[[myChem]], aes(x="", y=endpoint_grp, color = trend));
+		            #}
+		            #else
+		            #{
+		            #  p <- ggplot(chemDataTable[[myChem]], aes(x="", y=reorder(reorder(endpoint_grp, -as.numeric(bmd)), -as.numeric(is.na(bmd))), color = trend));
+		            #}
+		            
+		            p <- ggplot(chemDataTable[[myChem]], aes(x="", y=bmd/sum(bmd), fill=endpoint_grp)) + ggtitle(myChem) +
+		              #labs(y="", x=ifelse(logVal, "log(BMD) Values [uM]", "BMD Values [uM]"), mapping = aes(text = paste(
+		              #    paste("Endpoint: ", endpoint_grp, sep=""),
+		              #    paste(ifelse(logVal, "log(BMDL): ", "BMDL: "), ifelse(bmdl == NInfVal, "-Inf", ifelse(bmdl == InfVal, "Inf", formatC(signif(bmdl), digits=private$hoverSignificantDigits, flag="#"))), sep=""),
+		              #    paste(ifelse(logVal, "log(BMD): ", "BMD: "), ifelse(bmd == NInfVal, "-Inf", ifelse(bmd == InfVal, "Inf", formatC(signif(bmd), digits=private$hoverSignificantDigits, flag="#"))), sep=""),
+		              #    paste(ifelse(logVal, "log(BMDU): ", "BMDU: "), ifelse(bmdu == NInfVal, "-Inf", ifelse(bmdu == InfVal, "Inf", formatC(signif(bmdu), digits=private$hoverSignificantDigits, flag="#"))), sep=""),
+		              #    paste("Trend: ", ifelse(trend, "Yes", "No"), sep=""),
+		              #    paste("Model: ", model_type, sep=""),
+		              #    sep="\n"))) +
+		              geom_bar(width = 1, stat='identity') +
+		              coord_polar(theta="y", start=0)+
+		              theme(plot.title = element_text(size=22, hjust=0.5), legend.position = "none");
+		            
+		            #if (forceScale)
+		            #{
+		            #  p <- p +
+		            #    xlim(xmin-1.5, ifelse(logVal, xmax+1.5, xmax*1.21))
+		            #  #Allow space for the Inf values and blue dots/stars
+		            #}
+		            #if (nrow((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdl"]) & (chemDataTable[[myChem]])["bmdl"] == NInfVal, ]) > 0)
+		            #{
+		            #  p <- p +
+		            #    geom_bar(data = (chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdl"]) & (chemDataTable[[myChem]])["bmdl"] == NInfVal, ], 
+		            #               mapping = aes(x = (NInfVal-0.5), y = endpoint_grp, shape = 8, text = "This BMDL value is tending towards negative infinity."), color = "blue") +
+		            #    scale_shape_identity();
+		            #}
+		            #if (nrow((chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdu"]) & (chemDataTable[[myChem]])["bmdu"] == InfVal, ]) > 0)
+		            #{
+		            #  p <- p +
+		            #    geom_bar(data = (chemDataTable[[myChem]])[!is.na((chemDataTable[[myChem]])["bmdu"]) & (chemDataTable[[myChem]])["bmdu"] == InfVal, ], 
+		            #               mapping = aes(x = (ifelse(logVal, InfVal+0.5, InfVal*1.1)), y = endpoint_grp, shape = 8, text = "This BMDU value is tending towards infinity."), color = "blue") +
+		            #    scale_shape_identity();
+		            #}
+		            #if (nrow((chemDataTable[[myChem]])[(!is.na((chemDataTable[[myChem]])["bmdl"]) & !is.na((chemDataTable[[myChem]])["bmdu"])), ]) > 0)
+		            #{
+		            #  p <- p + geom_errorbarh(data = (chemDataTable[[myChem]])[(!is.na((chemDataTable[[myChem]])["bmdl"]) & !is.na((chemDataTable[[myChem]])["bmdu"])), ], 
+		            #                          aes(y=endpoint_grp, xmax=as.numeric(bmdu), xmin=as.numeric(bmdl), x=as.numeric(bmd), text = "", 
+		            #                              height=length(endpoints)/9), size=0.2, na.rm = TRUE);
+		            #} 
+		            
+		            #p <- p + coord_polar("y", start=0);
+		            
+		            ggplotly(p, tooltip = "text");
+		          }
+		        )
+		      })
+		      i <- i + 1;
+		      progress$inc(1/(2*length(chemicals)), detail = "Generating GeneTox Plots");
+		    }
+		  }
+		  else
+		  {
+		    for (e in endpoints)
+		    {
+		      chemDataTable[[e]] <- private$chem_data %>% filter(endpoint_grp == e);
+		      for (ch in chemicals)
+		      {
+		        if (nrow(chemDataTable[[e]] %>% filter(chemical == ch)) ==0)
+		        {
+		          chemDataTable[[e]] = rbind(chemDataTable[[e]], as.data.frame(list(chemical=ch, endpoint_grp = e, bmr = NA_real_, bmdl = NA_real_, bmd = NA_real_, bmdu = NA_real_, trend = FALSE, model_type = NA)));
+		        }
+		      }
+		      if ((i-1) %% 2 == 0)
+		      {
+		        insertUI(
+		          selector = "#ui_gt_plotContainerLeft",
+		          where = "beforeEnd",
+		          ui = fluidRow(id = "ui_gt_plots",
+		                        column(12,
+		                               box(status = "primary", title = "", collapsible = TRUE, width = 12,
+		                                   plotlyOutput(outputId = e, height=length(chemicals)*59+71)
+		                               )
+		                        )
+		          )
+		        );
+		      }
+		      else
+		      {
+		        insertUI(
+		          selector = "#ui_gt_plotContainerRight",
+		          where = "beforeEnd",
+		          ui = fluidRow(id = "ui_gt_plots",
+		                        column(12,
+		                               box(status = "primary", title = "", collapsible = TRUE, width = 12,
+		                                   plotlyOutput(outputId = e, height=length(chemicals)*59+71)
+		                               )
+		                        )
+		          )
+		        );
+		      }
+		      local({
+		        myEndpt <- e;
+		        output[[myEndpt]] <- renderPlotly(
+		          {
+		            if (logVal)
+		            {
+		              NInfVal <- min(ifelse(nrow(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdl"]) & (chemDataTable[[myEndpt]])["bmdl"] != -Inf, ])['bmdl']) == 0, Inf, min(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdl"]) & (chemDataTable[[myEndpt]])["bmdl"] != -Inf, ])['bmdl'], na.rm = TRUE)), 
+		                             ifelse(nrow(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmd"]) & (chemDataTable[[myEndpt]])["bmd"] != -Inf, ])['bmd']) == 0, Inf, min(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmd"]) & (chemDataTable[[myEndpt]])["bmd"] != -Inf, ])['bmd'], na.rm = TRUE)), 
+		                             ifelse(nrow(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdu"]) & (chemDataTable[[myEndpt]])["bmdu"] != -Inf, ])['bmdu']) == 0, Inf, min(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdu"]) & (chemDataTable[[myEndpt]])["bmdu"] != -Inf, ])['bmdu'], na.rm = TRUE)),
+		                             ifelse(forceScale, xmin, Inf), na.rm = TRUE)-1;
+		              InfVal <- max(ifelse(nrow(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdl"]) & (chemDataTable[[myEndpt]])["bmdl"] != Inf, ])['bmdl']) == 0, -Inf, max(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdl"]) & (chemDataTable[[myEndpt]])["bmdl"] != Inf, ])['bmdl'], na.rm = TRUE)), 
+		                            ifelse(nrow(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmd"]) & (chemDataTable[[myEndpt]])["bmd"] != Inf, ])['bmd']) == 0, -Inf, max(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmd"]) & (chemDataTable[[myEndpt]])["bmd"] != Inf, ])['bmd'], na.rm = TRUE)), 
+		                            ifelse(nrow(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdu"]) & (chemDataTable[[myEndpt]])["bmdu"] != Inf, ])['bmdu']) == 0, -Inf, max(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdu"]) & (chemDataTable[[myEndpt]])["bmdu"] != Inf, ])['bmdu'], na.rm = TRUE)),
+		                            ifelse(forceScale, xmax, -Inf), na.rm = TRUE)+1;
+		            }
+		            else
+		            {
+		              NInfVal <- -1;
+		              InfVal <- max(ifelse(nrow(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdl"]) & (chemDataTable[[myEndpt]])["bmdl"] != Inf, ])['bmdl']) == 0, -Inf, max(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdl"]) & (chemDataTable[[myEndpt]])["bmdl"] != Inf, ])['bmdl'], na.rm = TRUE)), 
+		                            ifelse(nrow(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmd"]) & (chemDataTable[[myEndpt]])["bmd"] != Inf, ])['bmd']) == 0, -Inf, max(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmd"]) & (chemDataTable[[myEndpt]])["bmd"] != Inf, ])['bmd'], na.rm = TRUE)), 
+		                            ifelse(nrow(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdu"]) & (chemDataTable[[myEndpt]])["bmdu"] != Inf, ])['bmdu']) == 0, -Inf, max(((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdu"]) & (chemDataTable[[myEndpt]])["bmdu"] != Inf, ])['bmdu'], na.rm = TRUE)), 
+		                            ifelse(forceScale, xmax, -Inf), na.rm = TRUE)*1.1;
+		            }
+		            
+		            if (nrow((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdl"]) & (chemDataTable[[myEndpt]])["bmdl"] == Inf,]) > 0)
+		            {chemDataTable[[myEndpt]][!is.na(chemDataTable[[myEndpt]]["bmdl"]) & chemDataTable[[myEndpt]]["bmdl"] == Inf,"bmdl"] <- InfVal;}
+		            if (nrow((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmd"]) & (chemDataTable[[myEndpt]])["bmd"] == Inf,]) > 0)
+		            {chemDataTable[[myEndpt]][!is.na(chemDataTable[[myEndpt]]["bmd"]) & chemDataTable[[myEndpt]]["bmd"] == Inf,"bmd"] <- InfVal;}
+		            if (nrow((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdu"]) & (chemDataTable[[myEndpt]])["bmdu"] == Inf,]) > 0)
+		            {chemDataTable[[myEndpt]][!is.na(chemDataTable[[myEndpt]]["bmdu"]) & chemDataTable[[myEndpt]]["bmdu"] == Inf,"bmdu"] <- InfVal;}
+		            if (nrow((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdl"]) & (chemDataTable[[myEndpt]])["bmdl"] == -Inf,]) > 0)
+		            {chemDataTable[[myEndpt]][!is.na(chemDataTable[[myEndpt]]["bmdl"]) & chemDataTable[[myEndpt]]["bmdl"] == -Inf,"bmdl"] <- NInfVal;}
+		            if (nrow((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmd"]) & (chemDataTable[[myEndpt]])["bmd"] == -Inf,]) > 0)
+		            {chemDataTable[[myEndpt]][!is.na(chemDataTable[[myEndpt]]["bmd"]) & chemDataTable[[myEndpt]]["bmd"] == -Inf,"bmd"] <- NInfVal;}
+		            if (nrow((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdu"]) & (chemDataTable[[myEndpt]])["bmdu"] == -Inf,]) > 0)
+		            {chemDataTable[[myEndpt]][!is.na(chemDataTable[[myEndpt]]["bmdu"]) & chemDataTable[[myEndpt]]["bmdu"] == -Inf,"bmdu"] <- NInfVal;}
+		            
+		            if (forceOrder)
+		            {
+		              p <- ggplot(chemDataTable[[myEndpt]], aes(x=as.numeric(bmd), y=chemical, color = trend));
+		            }
+		            else
+		            {
+		              p <- ggplot(chemDataTable[[myEndpt]], aes(x=as.numeric(bmd), y=reorder(reorder(chemical, -as.numeric(bmd)), -as.numeric(is.na(bmd))), color = trend));
+		            }
+		            
+		            p <- p + ggtitle(myEndpt) +
+		              labs(y="", x=ifelse(logVal, "log(BMD) Values [uM]", "BMD Values [uM]")) +
+		              geom_point(size = 2, mapping = aes(text = paste(
+		                paste("Chemical: ", chemical, sep=""),
+		                paste(ifelse(logVal, "log(BMDL): ", "BMDL: "), ifelse(bmdl == NInfVal, "-Inf", ifelse(bmdl == InfVal, "Inf", formatC(signif(bmdl), digits=private$hoverSignificantDigits, flag="#"))), sep=""),
+		                paste(ifelse(logVal, "log(BMD): ", "BMD: "), ifelse(bmd == NInfVal, "-Inf", ifelse(bmd == InfVal, "Inf", formatC(signif(bmd), digits=private$hoverSignificantDigits, flag="#"))), sep=""),
+		                paste(ifelse(logVal, "log(BMDU): ", "BMDU: "), ifelse(bmdu == NInfVal, "-Inf", ifelse(bmdu == InfVal, "Inf", formatC(signif(bmdu), digits=private$hoverSignificantDigits, flag="#"))), sep=""),
+		                paste("Trend: ", ifelse(trend, "Yes", "No"), sep=""),
+		                paste("Model: ", model_type, sep=""),
+		                sep="\n"))) +
+		              scale_color_manual(values = setNames(c("red", "black"), c(TRUE, FALSE))) +
+		              theme(plot.title = element_text(size=22, hjust=0.5), legend.position = "none")
+		            
+		            if (forceScale)
+		            {
+		              p <- p +
+		                xlim(xmin-1.5, ifelse(logVal, xmax+1.5, xmax*1.21))
+		              #Allow space for the Inf values and blue dots/stars
+		            }
+		            if (nrow((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdl"]) & (chemDataTable[[myEndpt]])["bmdl"] == NInfVal, ]) > 0)
+		            {
+		              p <- p +
+		                geom_point(data = (chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdl"]) & (chemDataTable[[myEndpt]])["bmdl"] == NInfVal, ], 
+		                           mapping = aes(x = NInfVal-0.5, y = chemical, shape = 8, text = "This BMDL value is tending towards negative infinity."), color = "blue") +
+		                scale_shape_identity();
+		            }
+		            if (nrow((chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdu"]) & (chemDataTable[[myEndpt]])["bmdu"] == InfVal, ]) > 0)
+		            {
+		              p <- p +
+		                geom_point(data = (chemDataTable[[myEndpt]])[!is.na((chemDataTable[[myEndpt]])["bmdu"]) & (chemDataTable[[myEndpt]])["bmdu"] == InfVal, ], 
+		                           mapping = aes(x = ifelse(logVal, InfVal+0.5, InfVal*1.1), y = chemical, shape = 8, text = "This BMDU value is tending towards infinity."), color = "blue") +
+		                scale_shape_identity();
+		            }
+		            if (nrow((chemDataTable[[myEndpt]])[(!is.na((chemDataTable[[myEndpt]])["bmdl"]) & !is.na((chemDataTable[[myEndpt]])["bmdu"])), ]) > 0)
+		            {
+		              p <- p +geom_errorbarh(data = (chemDataTable[[myEndpt]])[(!is.na((chemDataTable[[myEndpt]])["bmdl"]) & !is.na((chemDataTable[[myEndpt]])["bmdu"])), ],
+		                                     aes(y=chemical, xmax=as.numeric(bmdu), xmin=as.numeric(bmdl), x=as.numeric(bmd), text = "", 
+		                                         height=length(chemicals)/9), size=0.2, na.rm = TRUE);
+		            }
+		            
+		            ggplotly(p, tooltip = "text");
+		          }
+		        )
+		      })
+		      i <- i + 1;
+		      progress$inc(1/(2*length(endpoints)), detail = "Generating GeneTox Plots");
+		      
+		    }
 		  }
 		}
 	)
