@@ -1431,7 +1431,7 @@ server <- function( input, output, session ){
      }
      else if (input$select_graphType_gt == 6)
      {
-       gtAnalysis$plotGeneToxCurvePlot(input, output, progress = progressB)
+       gtAnalysis$plotGeneToxCurvePlot(input, output, progress = progressB, bmrValue = input$gt_precalculated_choices)
      }
      else if (input$select_graphType_gt == 7)
      {

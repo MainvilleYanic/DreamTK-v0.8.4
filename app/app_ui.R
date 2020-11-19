@@ -483,9 +483,11 @@ body <- dashboardBody(
                     wellPanel(id = "gt_calculation_type",
                       fluidRow(
                         column(6,
-                          conditionalPanel("input.select_graphType_gt == 1 || input.select_graphType_gt == 4 || input.select_graphType_gt == 5 || input.select_graphType_gt == 7",
-                            radioButtons(inputId = "gt_bmr_picker", label = "Select BMR Value", choices = c("Precalculated" = 1, "Custom" = 2), selected = 1, inline = TRUE),
-                            conditionalPanel("input.gt_bmr_picker == 1",
+                          conditionalPanel("input.select_graphType_gt == 1 || input.select_graphType_gt == 4 || input.select_graphType_gt == 5 || input.select_graphType_gt == 6 || input.select_graphType_gt == 7",
+                            conditionalPanel("input.select_graphType_gt != 6",
+                               radioButtons(inputId = "gt_bmr_picker", label = "Select BMR Value", choices = c("Precalculated" = 1, "Custom" = 2), selected = 1, inline = TRUE)
+                            ),
+                            conditionalPanel("input.select_graphType_gt == 6 || input.gt_bmr_picker == 1",
                               fluidRow(
                                 column(8,
                                   selectizeInput(inputId = "gt_precalculated_choices", label = "Precalculated Values",
@@ -495,7 +497,7 @@ body <- dashboardBody(
                                 )
                               ),
                             ),
-                            conditionalPanel("input.gt_bmr_picker == 2",
+                            conditionalPanel("input.select_graphType_gt != 6 && input.gt_bmr_picker == 2",
                               h6("Please note that custom values will be calculated on the spot, and might take some time."),
                               fluidRow(
                                 column(8,
@@ -512,7 +514,7 @@ body <- dashboardBody(
                               ),
                             )
                           ),
-                          conditionalPanel("input.select_graphType_gt == 2 || input.select_graphType_gt == 3 || input.select_graphType_gt == 6",
+                          conditionalPanel("input.select_graphType_gt == 2 || input.select_graphType_gt == 3",
                             fillRow(height = 171)
                           ),
                           conditionalPanel("input.select_graphType_gt == 2 || input.select_graphType_gt == 3 || input.select_graphType_gt == 4",

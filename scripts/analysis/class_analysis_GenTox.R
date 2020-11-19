@@ -1808,7 +1808,7 @@ Class.Analysis.GT <- R6Class("Class.Analysis.GT",
 		},
 		
 		#Show images of the Curve plot
-		plotGeneToxCurvePlot = function(input, output, progress) {
+		plotGeneToxCurvePlot = function(input, output, progress, bmrValue=5) {
 		  loginfo("Creating GeneTox plots");
 		  chemicals <- private$chem_data['chemical'] %>% unique() %>% unlist() %>% unname() %>% as.character();
 		  endpoints <- private$chem_data['endpoint_grp'] %>% unique() %>% unlist() %>% unname() %>% as.character();
@@ -1876,8 +1876,8 @@ Class.Analysis.GT <- R6Class("Class.Analysis.GT",
 		            where = "beforeEnd",
 		            ui = fluidRow(id = "ui_gt_plots",
 		                          column(12,
-		                                 box(status = "primary", title = paste(c, " - ", endpt, sep=""), collapsible = TRUE, width = 12,
-		                                     imageOutput(outputId = paste(c, " - ", endpt, sep=""), height=310)
+		                                 box(status = "primary", title = paste(c, " - ", endpt, " - ", bmrValue, sep=""), collapsible = TRUE, width = 12,
+		                                     imageOutput(outputId = paste(c, " - ", endpt, " - ", bmrValue, sep=""), height=310)
 		                                 )
 		                          )
 		            )
@@ -1890,8 +1890,8 @@ Class.Analysis.GT <- R6Class("Class.Analysis.GT",
 		            where = "beforeEnd",
 		            ui = fluidRow(id = "ui_gt_plots",
 		                          column(12,
-		                                 box(status = "primary", title = paste(c, " - ", endpt, sep=""), collapsible = TRUE, width = 12,
-		                                     imageOutput(outputId = paste(c, " - ", endpt, sep=""), height=310)
+		                                 box(status = "primary", title = paste(c, " - ", endpt, " - ", bmrValue, sep=""), collapsible = TRUE, width = 12,
+		                                     imageOutput(outputId = paste(c, " - ", endpt, " - ", bmrValue, sep=""), height=310)
 		                                 )
 		                          )
 		            )
@@ -1899,7 +1899,7 @@ Class.Analysis.GT <- R6Class("Class.Analysis.GT",
 		        }
 		        i <- i + 1;
 		        local({
-		          myVal <- paste(c, " - ", endpt, sep="");
+		          myVal <- paste(c, " - ", endpt, " - ", bmrValue, sep="");
 		          output[[myVal]] <- renderImage(
 		            {
 		              return(
@@ -1931,8 +1931,8 @@ Class.Analysis.GT <- R6Class("Class.Analysis.GT",
 		            where = "beforeEnd",
 		            ui = fluidRow(id = "ui_gt_plots",
 		                          column(12,
-		                                 box(status = "primary", title = paste(c, " - ", endpt, sep=""), collapsible = TRUE, width = 12,
-		                                     imageOutput(outputId = paste(c, " - ", endpt, sep=""), height=310)
+		                                 box(status = "primary", title = paste(c, " - ", endpt, " - ", bmrValue, sep=""), collapsible = TRUE, width = 12,
+		                                     imageOutput(outputId = paste(c, " - ", endpt, " - ", bmrValue, sep=""), height=310)
 		                                 )
 		                          )
 		            )
@@ -1945,8 +1945,8 @@ Class.Analysis.GT <- R6Class("Class.Analysis.GT",
 		            where = "beforeEnd",
 		            ui = fluidRow(id = "ui_gt_plots",
 		                          column(12,
-		                                 box(status = "primary", title = paste(c, " - ", endpt, sep=""), collapsible = TRUE, width = 12,
-		                                     imageOutput(outputId = paste(c, " - ", endpt, sep=""), height=310)
+		                                 box(status = "primary", title = paste(c, " - ", endpt, " - ", bmrValue, sep=""), collapsible = TRUE, width = 12,
+		                                     imageOutput(outputId = paste(c, " - ", endpt, " - ", bmrValue, sep=""), height=310)
 		                                 )
 		                          )
 		            )
@@ -1954,7 +1954,7 @@ Class.Analysis.GT <- R6Class("Class.Analysis.GT",
 		        }
 		        i <- i + 1;
 		        local({
-		          myVal <- paste(c, " - ", endpt, sep="");
+		          myVal <- paste(c, " - ", endpt, " - ", bmrValue, sep="");
 		          output[[myVal]] <- renderImage(
 		            {
 		              return(
